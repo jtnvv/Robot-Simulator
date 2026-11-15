@@ -36,6 +36,8 @@ public class Robot extends Component {
 
 	private Position blockedTargetPosition;
 	
+	private transient SynchronizedPosition lockedPosition;
+	
 	private FactoryPathFinder pathFinder;
 
 	public Robot(final Factory factory,
@@ -129,14 +131,74 @@ public class Robot extends Component {
 		return targetComponentsIterator.hasNext() ? targetComponentsIterator.next() : null;
 	}
 	
+	public boolean isLivelyLocked() {
+		final Position blockedTargetPosition = getBlockedTargetPosition();
+		
+		if (blockedTargetPosition == null) {
+			return false;
+		}
+		
+		final Component otherRobot = getFactory().getMobileComponentAt(blockedTargetPosition, this);
+		
+		return otherRobot != null && 
+			   getPosition().equals(((Robot) otherRobot).getBlockedTargetPosition());
+	}
+	
+	private Position findFreeNeighbouringPosition() {
+		final int resolution = getFactory().getPathResolution();
+		
+		for (int xOffset = -resolution; xOffset <= resolution; xOffset += resolution) {
+			for (int yOffset = -resolution; yOffset <= resolution; yOffset += resolution) {
+				final int x = getxCoordinate() + xOffset;
+				final int y = getyCoordinate() + yOffset;
+				
+				if ((xOffset == 0 && yOffset == 0) || x < 0 || y < 0 || x >= getFactory().getWidth() || y >= getFactory().getHeight()) {
+					continue;
+				}
+				
+				if (!getFactory().hasObstacleAt(new RectangularShape(x, y, resolution, resolution)) &&
+					!getFactory().hasMobileComponentAt(new RectangularShape(x, y, 2, 2), this)) {
+					return new Position(x, y);
+				}
+			}
+		}
+		
+		return null;
+	}
+	
 	private int moveToNextPathPosition() {
 		final Motion motion = computeMotion();
 		
-		final int displacement = motion == null ? 0 : motion.moveToTarget();
+		int displacement = 0;
+		
+		try {
+			displacement = motion == null ? 0 : motion.moveToTarget();
+		}
+		finally {
+			unlockTargetPosition();
+		}
 			
-		notifyObservers();
+		if (displacement != 0) {
+			notifyObservers();
+		}
+		else if (isLivelyLocked()) {
+			final Position freeNeighbouringPosition = findFreeNeighbouringPosition();
+			
+			if (freeNeighbouringPosition != null) {
+				blockedTargetPosition = freeNeighbouringPosition;
+				displacement = moveToNextPathPosition();
+				computePathToCurrentTargetComponent();
+			}
+		}
 		
 		return displacement;
+	}
+	
+	private void unlockTargetPosition() {
+		if (lockedPosition != null) {
+			lockedPosition.unlock();
+			lockedPosition = null;
+		}
 	}
 	
 	private void computePathToCurrentTargetComponent() {
@@ -160,9 +222,14 @@ public class Robot extends Component {
 				   										   2,
 				   										   2);
 		
+		// Only one robot at a time can check and move to a given position
+		lockedPosition = getFactory().getSynchronizedPosition(targetPosition);
+		lockedPosition.lock();
+		
 		// If there is another robot, memorize the blocked target position for the next run
 		if (getFactory().hasMobileComponentAt(shape, this)) {
 			this.blockedTargetPosition = targetPosition;
+			unlockTargetPosition();
 			
 			return null;
 		}

@@ -2,7 +2,9 @@ package fr.tp.inf112.projects.robotsim.model;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import fr.tp.inf112.projects.canvas.controller.Observable;
 import fr.tp.inf112.projects.canvas.controller.Observer;
@@ -25,6 +27,8 @@ public class Factory extends Component implements Canvas, Observable {
 	private transient boolean simulationStarted;
 	
 	private int pathResolution;
+
+	private transient Map<String, SynchronizedPosition> synchronizedPositions;
 
 	public Factory(final int width,
 				   final int height,
@@ -114,16 +118,7 @@ public class Factory extends Component implements Canvas, Observable {
 			this.simulationStarted = true;
 			notifyObservers();
 
-			while (isSimulationStarted()) {
-				behave();
-				
-				try {
-					Thread.sleep(100);
-				}
-				catch (final InterruptedException ex) {
-					System.err.println("Simulation was abruptly interrupted");
-				}
-			}
+			behave();
 		}
 	}
 
@@ -140,9 +135,9 @@ public class Factory extends Component implements Canvas, Observable {
 		boolean behaved = false;
 		
 		for (final Component component : getComponents()) {
+			new Thread(component).start();
 			
-			// Return true as soon as at least on of the components did behave
-			behaved = component.behave() || behaved;
+			behaved = true;
 		}
 		
 		return behaved;
@@ -151,6 +146,15 @@ public class Factory extends Component implements Canvas, Observable {
 	@Override
 	public Style getStyle() {
 		return DEFAULT;
+	}
+	
+	public synchronized SynchronizedPosition getSynchronizedPosition(final Position position) {
+		if (synchronizedPositions == null) {
+			synchronizedPositions = new HashMap<>();
+		}
+		
+		return synchronizedPositions.computeIfAbsent(position.getxCoordinate() + "," + position.getyCoordinate(),
+													 key -> new SynchronizedPosition(position.getxCoordinate(), position.getyCoordinate()));
 	}
 	
 	public boolean hasObstacleAt(final PositionedShape shape) {
