@@ -6,6 +6,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
+
 import fr.tp.inf112.projects.canvas.controller.Observable;
 import fr.tp.inf112.projects.canvas.controller.Observer;
 import fr.tp.inf112.projects.canvas.model.Canvas;
@@ -14,21 +20,30 @@ import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
 import fr.tp.inf112.projects.robotsim.model.shapes.RectangularShape;
 
+@JsonIdentityInfo(generator = ObjectIdGenerators.IntSequenceGenerator.class, property = "@factoryId")
 public class Factory extends Component implements Canvas, Observable {
 
 	private static final long serialVersionUID = 5156526483612458192L;
 	
 	private static final ComponentStyle DEFAULT = new ComponentStyle(5.0f);
 
+    @JsonManagedReference
     private final List<Component> components;
 
+	@JsonIgnore
 	private transient List<Observer> observers;
 
+	@JsonProperty("simulationStarted")
 	private transient boolean simulationStarted;
 	
 	private int pathResolution;
 
+	@JsonIgnore
 	private transient Map<String, SynchronizedPosition> synchronizedPositions;
+
+	public Factory() {
+		this(0, 0, null, 0);
+	}
 
 	public Factory(final int width,
 				   final int height,
@@ -42,7 +57,7 @@ public class Factory extends Component implements Canvas, Observable {
 		simulationStarted = false;
 	}
 	
-	protected List<Observer> getObservers() {
+	public List<Observer> getObservers() {
 		if (observers == null) {
 			observers = new ArrayList<>();
 		}
@@ -60,7 +75,7 @@ public class Factory extends Component implements Canvas, Observable {
 		return getObservers().remove(observer);
 	}
 	
-	protected void notifyObservers() {
+	public void notifyObservers() {
 		for (final Observer observer : getObservers()) {
 			observer.modelChanged();
 		}
@@ -90,6 +105,7 @@ public class Factory extends Component implements Canvas, Observable {
 		return components;
 	}
 
+	@JsonIgnore
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public Collection<Figure> getFigures() {

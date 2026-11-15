@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
 import fr.tp.inf112.projects.robotsim.model.motion.Motion;
@@ -26,19 +29,36 @@ public class Robot extends Component {
 	
 	private List<Component> targetComponents;
 	
+	@JsonIgnore
 	private transient Iterator<Component> targetComponentsIterator;
 	
 	private Component currTargetComponent;
 	
+	@JsonIgnore
 	private transient Iterator<Position> currentPathPositionsIter;
 	
+	@JsonProperty("blocked")
 	private transient boolean blocked;
 
 	private Position blockedTargetPosition;
 	
+	@JsonIgnore
 	private transient SynchronizedPosition lockedPosition;
 	
 	private FactoryPathFinder pathFinder;
+
+	public Robot() {
+		super();
+
+		this.pathFinder = null;
+		this.battery = null;
+		targetComponents = new ArrayList<>();
+		currTargetComponent = null;
+		currentPathPositionsIter = null;
+		speed = 5;
+		setBlocked(false);
+		blockedTargetPosition = null;
+	}
 
 	public Robot(final Factory factory,
 				 final FactoryPathFinder pathFinder,
@@ -76,7 +96,15 @@ public class Robot extends Component {
 		return blockedTargetPosition;
 	}
 	
-	private List<Component> getTargetComponents() {
+	public Battery getBattery() {
+		return battery;
+	}
+
+	public FactoryPathFinder getPathFinder() {
+		return pathFinder;
+	}
+
+	public List<Component> getTargetComponents() {
 		if (targetComponents == null) {
 			targetComponents = new ArrayList<>();
 		}
@@ -131,6 +159,7 @@ public class Robot extends Component {
 		return targetComponentsIterator.hasNext() ? targetComponentsIterator.next() : null;
 	}
 	
+	@JsonIgnore
 	public boolean isLivelyLocked() {
 		final Position blockedTargetPosition = getBlockedTargetPosition();
 		

@@ -12,6 +12,12 @@ public class Area extends Component {
 	
 	private Machine machine;
 	
+	public Area() {
+		super();
+
+		machine = null;
+	}
+
 	public Area(final Room room,
 				final RectangularShape shape,
 				final String name) {
@@ -22,6 +28,10 @@ public class Area extends Component {
 		machine = null;
 	}
 	
+	public Machine getMachine() {
+		return machine;
+	}
+
 	protected void setMachine( final Machine machine ) {
 		this.machine = machine;
 	}

@@ -1,5 +1,7 @@
 package fr.tp.inf112.projects.robotsim.model.shapes;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import fr.tp.inf112.projects.canvas.model.RectangleShape;
 
 public class RectangularShape extends PositionedShape implements RectangleShape {
@@ -8,7 +10,12 @@ public class RectangularShape extends PositionedShape implements RectangleShape 
 
 	private final int width;
 
+	@JsonProperty("height")
 	private final int heigth;
+
+	public RectangularShape() {
+		this(0, 0, 0, 0);
+	}
 
 	public RectangularShape(final int xCoordinate,
 							final int yCoordinate,

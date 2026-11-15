@@ -9,6 +9,10 @@ public class SynchronizedPosition extends Position {
 
 	private final Lock lock;
 
+	public SynchronizedPosition() {
+		this(0, 0);
+	}
+
 	public SynchronizedPosition(final int xCoordinate,
 								final int yCoordinate) {
 		super(xCoordinate, yCoordinate);

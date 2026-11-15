@@ -3,6 +3,9 @@ package fr.tp.inf112.projects.robotsim.model;
 import java.io.Serializable;
 import java.util.logging.Logger;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import fr.tp.inf112.projects.canvas.model.Figure;
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
@@ -16,11 +19,16 @@ public abstract class Component implements Figure, Serializable, Runnable {
 
 	private String id;
 
+	@JsonBackReference
 	private final Factory factory;
 	
 	private final PositionedShape positionedShape;
 	
 	private final String name;
+
+	protected Component() {
+		this(null, null, null);
+	}
 
 	protected Component(final Factory factory,
 						final PositionedShape shape,
@@ -46,17 +54,23 @@ public abstract class Component implements Figure, Serializable, Runnable {
 		return positionedShape;
 	}
 	
+	@JsonIgnore
 	public Position getPosition() {
-		return getPositionedShape().getPosition();
+		final PositionedShape shape = getPositionedShape();
+
+		return shape == null ? null : shape.getPosition();
 	}
 
 	protected Factory getFactory() {
 		return factory;
 	}
 
+	@JsonIgnore
 	@Override
 	public int getxCoordinate() {
-		return getPositionedShape().getxCoordinate();
+		final PositionedShape shape = getPositionedShape();
+
+		return shape == null ? -1 : shape.getxCoordinate();
 	}
 
 	protected boolean setxCoordinate(int xCoordinate) {
@@ -69,9 +83,12 @@ public abstract class Component implements Figure, Serializable, Runnable {
 		return false;
 	}
 
+	@JsonIgnore
 	@Override
 	public int getyCoordinate() {
-		return getPositionedShape().getyCoordinate();
+		final PositionedShape shape = getPositionedShape();
+
+		return shape == null ? -1 : shape.getyCoordinate();
 	}
 
 	protected boolean setyCoordinate(final int yCoordinate) {
@@ -85,7 +102,9 @@ public abstract class Component implements Figure, Serializable, Runnable {
 	}
 
 	protected void notifyObservers() {
-		getFactory().notifyObservers();
+		if (getFactory() != null) {
+			getFactory().notifyObservers();
+		}
 	}
 
 	public String getName() {
@@ -98,18 +117,25 @@ public abstract class Component implements Figure, Serializable, Runnable {
 				+ ", shape=" + getPositionedShape();
 	}
 
+	@JsonIgnore
 	public int getWidth() {
-		return getPositionedShape().getWidth();
+		final PositionedShape shape = getPositionedShape();
+
+		return shape == null ? -1 : shape.getWidth();
 	}
 
+	@JsonIgnore
 	public int getHeight() {
-		return getPositionedShape().getHeight();
+		final PositionedShape shape = getPositionedShape();
+
+		return shape == null ? -1 : shape.getHeight();
 	}
 	
 	public boolean behave() {
 		return false;
 	}
 	
+	@JsonIgnore
 	public boolean isMobile() {
 		return false;
 	}
@@ -126,16 +152,19 @@ public abstract class Component implements Figure, Serializable, Runnable {
 		return false;
 	}
 	
+	@JsonIgnore
 	@Override
 	public Style getStyle() {
 		return ComponentStyle.DEFAULT;
 	}
 	
+	@JsonIgnore
 	@Override
 	public Shape getShape() {
 		return getPositionedShape();
 	}
 	
+	@JsonIgnore
 	public boolean isSimulationStarted() {
 		return getFactory().isSimulationStarted();
 	}

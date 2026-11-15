@@ -10,11 +10,23 @@ public class Battery implements Serializable {
 	
 	private float level;
 
+	public Battery() {
+		this(0);
+	}
+
 	public Battery(final float capacity) {
 		this.capacity = capacity;
 		level = capacity;
 	}
 	
+	public float getCapacity() {
+		return capacity;
+	}
+
+	public float getLevel() {
+		return level;
+	}
+
 	public float consume(float energy) {
 		level-= energy;
 		

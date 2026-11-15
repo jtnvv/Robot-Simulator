@@ -25,6 +25,10 @@ public class JGraphTDijkstraFactoryPathFinder extends AbstractFactoryPathFinder<
 	 */
 	private static final long serialVersionUID = -7396132432169002382L;
 
+	public JGraphTDijkstraFactoryPathFinder() {
+		super();
+	}
+
 	public JGraphTDijkstraFactoryPathFinder(final Factory factoryModel,
 											final int resolution) {
 		super(factoryModel, resolution);

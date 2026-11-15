@@ -1,5 +1,7 @@
 package fr.tp.inf112.projects.robotsim.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import fr.tp.inf112.projects.canvas.model.Style;
 import fr.tp.inf112.projects.canvas.model.impl.RGBColor;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
@@ -71,10 +73,18 @@ public class Door extends Component {
 	
 	private boolean open;
 	
+	@JsonBackReference("room")
 	private final Room room;
 	
 	private static final Style OPEN_STYLE = new ComponentStyle(RGBColor.WHITE, null, 0, null);
 	
+	public Door() {
+		super();
+
+		this.room = null;
+		this.open = false;
+	}
+
 	public Door(final Room room,
 				final Room.WALL wall,
 				final int offset,
@@ -95,7 +105,7 @@ public class Door extends Component {
 		return isOpen() ? OPEN_STYLE : ComponentStyle.DEFAULT_BLACK;
 	}
 
-	private boolean isOpen() {
+	public boolean isOpen() {
 		return open;
 	}
 
