@@ -6,7 +6,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -15,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import fr.tp.inf112.projects.canvas.model.Canvas;
 import fr.tp.inf112.projects.canvas.model.CanvasPersistenceManager;
 import fr.tp.inf112.projects.robotsim.model.Factory;
+import fr.tp.inf112.projects.robotsim.model.FactoryModelChangedNotifier;
 import fr.tp.inf112.projects.robotsim.model.RemoteFactoryPersistenceManager;
 
 @RestController
@@ -25,6 +28,9 @@ public class SimulationController {
 	private final Map<String, Factory> simulatedFactories = new ConcurrentHashMap<>();
 
 	private final CanvasPersistenceManager persistenceManager = new RemoteFactoryPersistenceManager(null);
+
+	@Autowired
+	private KafkaTemplate<String, Factory> simulationEventTemplate;
 
 	@GetMapping("/simulation/start/{factoryId}")
 	public boolean startSimulation(@PathVariable final String factoryId) {
@@ -46,6 +52,9 @@ public class SimulationController {
 				LOGGER.info("Stopping the previous simulation of factory model '" + factoryId + "'.");
 				previousFactory.stopSimulation();
 			}
+
+			final FactoryModelChangedNotifier notifier = new KafkaFactoryModelChangeNotifier(factory, simulationEventTemplate);
+			factory.setNotifier(notifier);
 
 			factory.startSimulation();
 			LOGGER.info("Simulation of factory model '" + factoryId + "' started.");

@@ -9,7 +9,6 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -24,6 +23,7 @@ import fr.tp.inf112.projects.canvas.model.impl.BasicPoint;
 import fr.tp.inf112.projects.graph.impl.BasicVertex;
 import fr.tp.inf112.projects.robotsim.model.Component;
 import fr.tp.inf112.projects.robotsim.model.Factory;
+import fr.tp.inf112.projects.robotsim.model.LocalFactoryModelChangedNotifier;
 import fr.tp.inf112.projects.robotsim.model.shapes.PositionedShape;
 
 public class RemoteSimulatorController extends SimulatorController {
@@ -40,6 +40,10 @@ public class RemoteSimulatorController extends SimulatorController {
 
 	private final ObjectMapper objectMapper;
 
+	private final LocalFactoryModelChangedNotifier notifier;
+
+	private volatile boolean animationRunning;
+
 	private Thread viewerUpdater;
 
 	public RemoteSimulatorController(final CanvasPersistenceManager persistenceManager) {
@@ -49,6 +53,13 @@ public class RemoteSimulatorController extends SimulatorController {
 	public RemoteSimulatorController(final Factory factoryModel,
 									 final CanvasPersistenceManager persistenceManager) {
 		super(factoryModel, persistenceManager);
+
+		notifier = new LocalFactoryModelChangedNotifier();
+		animationRunning = false;
+
+		if (factoryModel != null) {
+			factoryModel.setNotifier(notifier);
+		}
 
 		httpClient = HttpClient.newHttpClient();
 
@@ -65,21 +76,40 @@ public class RemoteSimulatorController extends SimulatorController {
 	}
 
 	@Override
-	public void setCanvas(final Canvas canvasModel) {
-		final Factory previousFactory = (Factory) getCanvas();
-		final List<Observer> observers = previousFactory == null ? new ArrayList<>() : new ArrayList<>(previousFactory.getObservers());
+	public boolean addObserver(final Observer observer) {
+		return notifier.addObserver(observer);
+	}
 
+	@Override
+	public boolean removeObserver(final Observer observer) {
+		return notifier.removeObserver(observer);
+	}
+
+	@Override
+	public void setCanvas(final Canvas canvasModel) {
 		super.setCanvas(canvasModel);
 
 		final Factory factory = (Factory) getCanvas();
 
 		if (factory != null) {
-			for (final Observer observer : observers) {
-				factory.addObserver(observer);
-			}
-
-			factory.notifyObservers();
+			factory.setNotifier(notifier);
 		}
+
+		notifier.notifyObservers();
+	}
+
+	public void setCanvas(final String canvasAsJson) {
+		try {
+			setCanvas(objectMapper.readValue(canvasAsJson, Factory.class));
+		}
+		catch (final IOException ex) {
+			LOGGER.log(Level.SEVERE, "Cannot parse the received factory model.", ex);
+		}
+	}
+
+	@Override
+	public boolean isAnimationRunning() {
+		return animationRunning;
 	}
 
 	@Override
@@ -92,12 +122,14 @@ public class RemoteSimulatorController extends SimulatorController {
 			}
 
 			setCanvas(getFactory());
+			animationRunning = true;
 
 			viewerUpdater = new Thread(new Runnable() {
 
 				@Override
 				public void run() {
-					updateViewer();
+					final FactorySimulationEventConsumer consumer = new FactorySimulationEventConsumer(RemoteSimulatorController.this);
+					consumer.consumeMessages();
 				}
 			});
 			viewerUpdater.start();
@@ -114,6 +146,8 @@ public class RemoteSimulatorController extends SimulatorController {
 				LOGGER.warning("The simulation service could not stop the simulation of the factory model.");
 			}
 
+			animationRunning = false;
+
 			if (viewerUpdater != null) {
 				viewerUpdater.join();
 				viewerUpdater = null;
@@ -128,21 +162,6 @@ public class RemoteSimulatorController extends SimulatorController {
 
 		if (factory != null) {
 			factory.stopSimulation();
-		}
-	}
-
-	// Periodically retrieves a fresh model of the simulated factory from the service
-	private void updateViewer() {
-		try {
-			while (isAnimationRunning()) {
-				final Factory remoteFactoryModel = getFactory();
-				setCanvas(remoteFactoryModel);
-
-				Thread.sleep(100);
-			}
-		}
-		catch (final InterruptedException | URISyntaxException | IOException ex) {
-			LOGGER.log(Level.FINE, "The remote simulation model cannot be retrieved anymore.", ex);
 		}
 	}
 

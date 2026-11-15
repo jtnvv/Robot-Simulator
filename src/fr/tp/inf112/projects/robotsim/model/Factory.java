@@ -31,7 +31,7 @@ public class Factory extends Component implements Canvas, Observable {
     private final List<Component> components;
 
 	@JsonIgnore
-	private transient List<Observer> observers;
+	private transient FactoryModelChangedNotifier notifier;
 
 	@JsonProperty("simulationStarted")
 	private transient boolean simulationStarted;
@@ -53,31 +53,37 @@ public class Factory extends Component implements Canvas, Observable {
 		
 		this.pathResolution = pathResolution;
 		components = new ArrayList<>();
-		observers = null;
+		notifier = new LocalFactoryModelChangedNotifier();
 		simulationStarted = false;
 	}
 	
-	public List<Observer> getObservers() {
-		if (observers == null) {
-			observers = new ArrayList<>();
+	@JsonIgnore
+	public FactoryModelChangedNotifier getNotifier() {
+		if (notifier == null) {
+			notifier = new LocalFactoryModelChangedNotifier();
 		}
-		
-		return observers;
+
+		return notifier;
+	}
+
+	@JsonIgnore
+	public void setNotifier(final FactoryModelChangedNotifier notifier) {
+		this.notifier = notifier;
 	}
 
 	@Override
 	public boolean addObserver(Observer observer) {
-		return getObservers().add(observer);
+		return getNotifier().addObserver(observer);
 	}
 
 	@Override
 	public boolean removeObserver(Observer observer) {
-		return getObservers().remove(observer);
+		return getNotifier().removeObserver(observer);
 	}
 	
 	public void notifyObservers() {
-		for (final Observer observer : getObservers()) {
-			observer.modelChanged();
+		if (notifier != null) {
+			notifier.notifyObservers();
 		}
 	}
 	
