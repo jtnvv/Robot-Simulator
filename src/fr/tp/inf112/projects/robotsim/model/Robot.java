@@ -40,7 +40,11 @@ public class Robot extends Component {
 	@JsonProperty("blocked")
 	private transient boolean blocked;
 
-	private Position blockedTargetPosition;
+	// volatile: it is also read from the threads of the other robots (see isLivelyLocked()).
+	private volatile Position blockedTargetPosition;
+	
+	// Set while the robot moves to a neighbouring free cell to get out of a livelock.
+	private transient boolean steppingAside;
 	
 	@JsonIgnore
 	private transient SynchronizedPosition lockedPosition;
@@ -181,12 +185,12 @@ public class Robot extends Component {
 				final int x = getxCoordinate() + xOffset;
 				final int y = getyCoordinate() + yOffset;
 				
-				if ((xOffset == 0 && yOffset == 0) || x < 0 || y < 0 || x >= getFactory().getWidth() || y >= getFactory().getHeight()) {
+				if ((xOffset == 0 && yOffset == 0) || x < 0 || y < 0 || x + resolution > getFactory().getWidth() || y + resolution > getFactory().getHeight()) {
 					continue;
 				}
 				
 				if (!getFactory().hasObstacleAt(new RectangularShape(x, y, resolution, resolution)) &&
-					!getFactory().hasMobileComponentAt(new RectangularShape(x, y, 2, 2), this)) {
+					!getFactory().hasMobileComponentAt(new RectangularShape(x, y, resolution, resolution), this)) {
 					return new Position(x, y);
 				}
 			}
@@ -208,15 +212,27 @@ public class Robot extends Component {
 		}
 			
 		if (displacement != 0) {
+			setBlocked(false);
+			
+			if (steppingAside) {
+				steppingAside = false;
+				computePathToCurrentTargetComponent();
+			}
+			
 			notifyObservers();
+		}
+		else if (steppingAside) {
+			steppingAside = false;
+			blockedTargetPosition = null;
+			computePathToCurrentTargetComponent();
 		}
 		else if (isLivelyLocked()) {
 			final Position freeNeighbouringPosition = findFreeNeighbouringPosition();
 			
 			if (freeNeighbouringPosition != null) {
 				blockedTargetPosition = freeNeighbouringPosition;
+				steppingAside = true;
 				displacement = moveToNextPathPosition();
-				computePathToCurrentTargetComponent();
 			}
 		}
 		
@@ -233,15 +249,25 @@ public class Robot extends Component {
 	private void computePathToCurrentTargetComponent() {
 		final List<Position> currentPathPositions = pathFinder.findPath(this, currTargetComponent);
 		currentPathPositionsIter = currentPathPositions.iterator();
+		
+		if (!currentPathPositions.isEmpty()) {
+			setBlocked(false);
+		}
 	}
 	
 	private Motion computeMotion() {
-		if (!currentPathPositionsIter.hasNext()) {
-
-			// There is no free path to the target
-			setBlocked(true);
+		// Retry the memorized blocked position first; if there is none and the path is used up, compute a new one
+		if (blockedTargetPosition == null && !currentPathPositionsIter.hasNext()) {
 			
-			return null;
+			computePathToCurrentTargetComponent();
+			
+			if (!currentPathPositionsIter.hasNext()) {
+
+				// There is no free path to the target
+				setBlocked(true);
+				
+				return null;
+			}
 		}
 		
 		

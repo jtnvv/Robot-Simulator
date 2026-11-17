@@ -72,7 +72,6 @@ public class SimulatorApplication {
 		robot1.addTargetComponent(machine1);
 		robot1.addTargetComponent(machine2);
 		robot1.addTargetComponent(conveyor1);
-		robot1.addTargetComponent(chargingStation);
 
 		final FactoryPathFinder customPathFinder = new CustomDijkstraFactoryPathFinder(factory, factoryPathResolution);
 		final Robot robot2 = new Robot(factory, customPathFinder, new CircularShape(45, 5, 2), new Battery(10), "Robot 2");
